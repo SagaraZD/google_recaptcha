@@ -30,10 +30,4 @@
 
 Add the reCAPTCHA Verification filter to your event your form is executing
 
-## Check for a reCAPTCHA error
 
-Add the following to the page to alert users of an event failure
-
-<xsl:if test="/data/events/<event-name>/filter[@name='recaptcha']/@status='failed'">
-reCAPTCHA field is required.
-</xsl:if>
