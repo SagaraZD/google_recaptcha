@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<extension id="google_recaptcha" status="released" xmlns="http://symphony-cms.com/schemas/extension/1.0">
+	<name>Google reCaptcha</name>
+	<description>Insert and process reCaptcha field for form submission</description>
+	<repo type="github">https://github.com/SagaraZD/google_recaptcha</repo>
+	<types>
+		<type>Third Party Integration</type>
+	</types>
+	<authors>
+		<author>
+			<name github="sagarazd" symphony="community">Sagara Dayananda</name>
+		</author>
+	</authors>
+	<releases>
+		<release version="1.0" date="2017-08-24"  min="2.6" max="2.6.x" />
+	</releases>
+</extension>
