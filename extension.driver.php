@@ -1,5 +1,8 @@
 <?php
-Class extension_google_recaptcha extends Extension {
+class extension_google_recaptcha extends Extension {
+	// Keep track of values
+	private static $cache = array();
+	
 	/*-------------------------------------------------------------------------
 		Extension definition
 	-------------------------------------------------------------------------*/
@@ -77,7 +80,6 @@ Class extension_google_recaptcha extends Extension {
 		-------------------------------------------------------------------------*/
 
 	public function addReCaptchaParams( array $context = null ) {
-		
 		$context[ 'params' ][ 'recaptcha-sitekey' ] = $this->_get_sitekey();
 	}
 
@@ -120,55 +122,48 @@ Class extension_google_recaptcha extends Extension {
 	private function _get_sitekey() {
 		return Symphony::Configuration()->get( 'recaptcha-sitekey', 'google_recaptcha' );
 	}
-	
 
+	public function validateChallenge($user_response)
+	{
+		//Get recaptcha-secret-id from config
+		$s_id = Symphony::Configuration()->get( 'recaptcha-secret-id', 'google_recaptcha' );
+		
+		$status = false;
+		if (!isset(self::$cache[$user_response])) {
+			//Google api call for check reCaptcha
+			$ch = new Gateway();
+			$ch->init('https://www.google.com/recaptcha/api/siteverify');
+			$ch->setopt('POST', 1);
+			$ch->setopt('POSTFIELDS', array(
+				'secret' => $s_id,
+				'response' => $user_response,
+				'remoteip' => isset($_SERVER['HTTP_X_FORWARDED_FOR']) ? $_SERVER['HTTP_X_FORWARDED_FOR'] : $_SERVER['REMOTE_ADDR'],
+			));
+			$content = @$ch->exec();
+			if ($content) {
+				$content = @json_decode($content);
+				$status = $content && $content->success;
+			}
+			self::$cache[$user_response] = $status;
+			
+		} else {
+			$status = self::$cache[$user_response];
+		}
+		return $status;
+	}
 
 	/**
 	 * perform event filter
 	 */
 
 	public function processEventData( $context ) {
-		
-		 if (in_array('google_recaptcha', $context['event']->eParamFILTERS)) { 
+		if (in_array('google_recaptcha', $context['event']->eParamFILTERS)) {
 			//Get response code
 			$user_response = $context['fields']['google_recaptcha'];
-		
-			//Get recaptcha-secret-id from config
-			$s_id = Symphony::Configuration()->get( 'recaptcha-secret-id', 'google_recaptcha' );
-				
-			//Google api call for check reCaptcha
-			$fields_string = '';
-			$fields = array(
-				'secret' => $s_id, 
-				'response' => $user_response
-			);
-			foreach($fields as $key=>$value)
-			$fields_string .= $key . '=' . $value . '&';
-			$fields_string = rtrim($fields_string, '&');
-
-			$ch = curl_init();
-			curl_setopt($ch, CURLOPT_URL, 'https://www.google.com/recaptcha/api/siteverify');
-			curl_setopt($ch, CURLOPT_POST, count($fields));
-			curl_setopt($ch, CURLOPT_POSTFIELDS, $fields_string);
-			curl_setopt($ch, CURLOPT_RETURNTRANSFER, True);
-
-			$result = curl_exec($ch);
-			curl_close($ch);
-		
-			$finale_result = json_decode($result, true);
-
-		    //Check $result
-		
-			if (!$finale_result['success']) {
-				$status = false;
-			} else {
-
-				$status = true;
-			}
 			
-			$context['messages'][] = array('google_recaptcha', $status, (!$status ? 'reCAPTCHA field is required.' : NULL));
-		
-	}
-	
+			$status = $this->validateChallenge($user_response);
+			
+			$context['messages'][] = array('google_recaptcha', $status, (!$status ? 'reCAPTCHA field is required.' : null));
+		}
 	}
 }
